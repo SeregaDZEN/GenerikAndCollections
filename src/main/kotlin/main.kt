@@ -8,14 +8,14 @@ data class Note(
     val title: String,
     val text: String,
     val isDeleteComment: Boolean = true,
-    val comments: MutableList<Comment>
+    val comments: MutableList<Comment> = mutableListOf()
 )
 
 data class Comment(val idComment: Int, val message: String, var isDeleteComment: Boolean = true)
 
 object CommentChange {
 
-    private val notes: MutableList<Note> = mutableListOf()
+    private val notes: MutableMap<Int, Note> = mutableMapOf()
     private val comments: MutableList<Comment> = mutableListOf()
 
     fun createComment(comment: Comment): Int {
@@ -35,23 +35,21 @@ object CommentChange {
     }
 
     fun editComment(upDateComment: Comment, note: Note): Boolean {
-        for (n in notes) {
-            if (note.noteId == n.noteId) {
-                for (c in n.comments.indices) {
-                    if (upDateComment.idComment == n.comments[c].idComment) {
-                        val number = n.comments.size + 1
-                        n.comments[c] = upDateComment.copy(message = "new comment $number")
-                        return true
-                    }
+        for ((key, n) in notes) {
+            if (note.noteId == key) {
+                val commentIndex = n.comments.indexOfFirst { it.idComment == upDateComment.idComment }
+                if (commentIndex != -1) {
+                    n.comments[commentIndex] = upDateComment
+                    return true
                 }
+                throw RuntimeException("не найдена заметка")
             }
         }
-        throw RuntimeException("не найдена заметка")
+        throw RuntimeException("Заметка не найдена")
     }
 
-    fun getComments(): List<Comment> {
-        return this.comments
-    }
+    fun getComments() = comments
+
 
     fun restoresComment(comment: Comment): Boolean {
         for (i in comments) {
@@ -67,25 +65,36 @@ object CommentChange {
 }
 
 object NoteChange {
-    fun add(id : Int, title: String ) {
 
+    private val notes: MutableMap<Int, Note> = mutableMapOf()
+    private var nextId = 1
+    fun add(title: String): Int {
+        val noteId = nextId++
+        val note = Note(noteId = noteId, title, "new version")
+        notes[noteId] = note
+        return note.noteId
+    }
+
+
+    fun delete(noteId: Int): Boolean {
+        return notes.remove(noteId) != null
+    }
+
+
+    fun edit(noteId: Int, text: String): Boolean {
+        val note = notes[noteId]
+        return if (note != null) {
+            val upDateNote = note.copy(text = text)
+            notes[noteId] = upDateNote
+            true
+        } else throw RuntimeException("заметка не найдена")
 
     }
 
-    fun delete() {
+    fun get() = notes
 
-    }
-
-    fun edit() {
-
-    }
-
-    fun get() {
-
-    }
-
-    fun getById() {
-
+    fun getById(idNote: Int): Note {
+       return notes[idNote] ?: throw RuntimeException("заметка не найдена")
     }
 
 
